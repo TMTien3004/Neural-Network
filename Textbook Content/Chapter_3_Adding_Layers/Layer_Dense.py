@@ -13,7 +13,7 @@ nnfs.init()
 """
 - np.random.randn produces a Gaussian distribution with a mean of 0 and a variance of 1, which means that it will generate 
 random numbers, positive and negative, centered at 0 and with the mean value close to 0.
-- np.zeros function takes a desired array shape as an argument and returns an array of that shape filled with zeros.
+- np.zeros function takes a desired array shape as an argument and returns an matrix filled with zeros.
 """
 
 class Layer_Dense:
