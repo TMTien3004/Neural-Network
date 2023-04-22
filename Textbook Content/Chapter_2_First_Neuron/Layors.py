@@ -1,5 +1,6 @@
 import os
-
+# A Layer of Neuron
+#-------------------------------------------------------------------------------------------------------------------------
 inputs = [1, 2, 3, 2.5]
 
 """
@@ -13,13 +14,15 @@ Since we are modeling a single neuron, we only have one bias, as there is just o
 The bias is an additional tunable value but is not associated with any input in contrast to the
 weights.
 """
-bias = [2, 3, 0.5]
+bias = [2.0, 3.0, 0.5]
 
 """
 A layer is a group of neuron. The method of calculating the output is similar to finding the dot product of a vector.
 Since calcuating each neuron manually is too much to handle, we use loops.
 
-The zip() function takes iterables (can be zero or more), aggregates them in a tuple (or a pair), and returns it
+The zip() function takes iterables (can be zero or more), aggregates them in a tuple (or a pair), and returns it.
+
+We know we have three neurons because there are 3 sets of weights and 3 biases
 """
 layer_outputs = []
 # For each neuron
@@ -34,9 +37,6 @@ for neuron_weights, neuron_bias in zip(weights, bias):
     #Append to the layer
     layer_outputs.append(neuron_output)
 
-"""
-We know we have three neurons because there are 3 sets of weights and 3 biases
-"""
 
 os.system("clear")
 print(layer_outputs)
