@@ -1,7 +1,7 @@
 #Dense Layer Class
 #---------------------------------------------------------------------------------------------------------------------------
 import numpy as np
-import nnfs
+import nnfs # nnfs can't be imported?
 from nnfs.datasets import spiral_data
 
 nnfs.init()
