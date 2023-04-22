@@ -7,12 +7,12 @@ b = [2.0, 3.0, 4.0]
 
 #np.expand_dims() adds a new dimension at the index of the axis .
 c = np.expand_dims(np.array(a), axis = 0)
-print(c)
+# print(c)
 
 #.T means that we will turn matrix b into the TRANSPOSE of matrix b
 a = np.array([a])
 b = np.array([b]).T
-print(np.dot(a,b))
+# print(np.dot(a,b))
 
 """
 The reason why we need to do the transpose is because if we want to do matrix multiplication, we need to make sure that
