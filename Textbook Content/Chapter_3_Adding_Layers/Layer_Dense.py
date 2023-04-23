@@ -29,7 +29,7 @@ class Layer_Dense:
         self.output = np.dot(inputs, self.weights) + self.biases
         pass # using pass statement as a placeholder
 
-#Create data set
+# Create 1 layer of 4 inputs and 5 neurons and 5 inputs and 2 neurons
 layer1 = Layer_Dense(4,5)
 layer2 = Layer_Dense(5,2)
 
