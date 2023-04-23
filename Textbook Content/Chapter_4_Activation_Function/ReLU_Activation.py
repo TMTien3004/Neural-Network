@@ -47,11 +47,11 @@ class ReLU_Activation:
     def forward(self, inputs):
         self.output = np.maximum(0, inputs)
 
-# Create 1 layer of 4 inputs and 5 neurons
 """
 - You can create as many layers as you want.
 - The first input represents the size of the input data (the number of feature per samples)
 """
+# Create 1 layer of 2 inputs and 5 neurons
 layer1 = Layer_Dense(2,5)
 activation1 = ReLU_Activation()
 
