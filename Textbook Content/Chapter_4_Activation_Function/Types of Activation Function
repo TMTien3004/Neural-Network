@@ -1,0 +1,30 @@
+The Step Activation Function
+- In a single neuron, if the (weights * inputs + bias) results in a value greater than 0, the neuron will fire and output a 1 
+otherwise, it will output a 0.
+
+The Linear Activation Function
+- A linear function is simply the equation of a line. It will appear as a straight line when graphed, where y=x and the output value equals the input.
+- This activation function is usually applied to the last layer’s output in the case of a regression model.
+
+The Sigmoid Activation Function
+- This function returns a value in the range of 0 for negative infinity, through 0.5 for the input of 0, and to 1 for positive infinity.
+
+The Rectified Linear Activation Function
+- It’s quite literally y = x , clipped at 0 from the negative side. If x is less than or equal to 0 , then y is 0 — otherwise, y is equal to x.
+
+Why Use Activation Functions?
+- While there are many problems in life are linear, there are a lot of problems that are not. For example, the price of a home can be affected by size, location, time of year attempting to sell, number of rooms, yard, neighborhood, and so on. This can make the equation nonlinear, and we need activation function to estimate the nonlinear graph as accurate as possible.
+- The main attraction for neural networks has to do with their ability to solve nonlinear problems.
+
+- If one neuron is calculated by using the LA (Linear Activation) function, all of the other neuron will do the same. However, when we deal with a nonlinear problem, the approximation won't be accurate.
+E.g: Say that we have a y = sin(x) graph. If we use the LA function, we can only approximate y = sin(x) with one straight line. However, y = sin(x) is not a straight line, so the LA function wouldn't fit y = sin(x).
+
+- On the other hand, if we use ReLA (Rectified Linear Activation) function, the line drawn by the ReLA function will fit y = sin(x) a lot more.
+
+Why should we use ReLA (Rectified Linear Activation) Function?
+- Because it's fast since it only does simple calculation compared to Sigmoid Activation Function.
+
+How does ReLA works?
+- https://www.youtube.com/watch?v=gmjzbpSVY1A&list=PLQVvvaa0QuDcjD5BAw2DxE6OF2tius3V3&index=5 (Skip to 9:00)
+
+
