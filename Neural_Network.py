@@ -27,6 +27,7 @@ def spiral_data(points, classes):
 
 X = [[1, 2, 3, 2.5], [2.0, 5.0, -1.0, 2.0], [-1.5, 2.7, 3.3, -0.8]]
 
+# Dense Layer
 class Layer_Dense:
     # Layer initialization
     def __init__(self, n_inputs, n_neurons):
@@ -39,10 +40,14 @@ class Layer_Dense:
         # Calculate output values from inputs, weights and biases
         self.output = np.dot(inputs, self.weights) + self.biases
 
+# ReLU Activation
 class ReLU_Activation:
+    # Forward pass
     def forward(self, inputs):
+        # Calculate output values from inputs
         self.output = np.maximum(0, inputs)
 
+# Softmax Activation
 class Softmax_Activation:
     def forward(self, inputs):
         # We need to subtract all values by the larget element in the input dataset to avoid overflow. The probability will not be affected by this.
@@ -52,6 +57,34 @@ class Softmax_Activation:
         probablities = exp_values / np.sum(exp_values, axis=1, keepdims=True)
         # Return the output
         self.output = probablities
+
+# Common loss class
+class Loss:
+    # Calculates the data and regularization losses given model output and ground truth values
+    def calculate (self, output, y): # y is the intended target values
+        # Calculate sample losses
+        sample_losses = self.forward(output, y)
+        # Calculate mean loss
+        data_loss = np.mean(sample_losses)
+        # Return mean loss
+        return data_loss
+
+# Cross-Entropy Loss
+class Categorical_Cross_Entropy_Loss(Loss):
+    def forward(self, y_pred, y_true): # y_pred is the value from the neural network, y_true is the target training values
+        # Number of samples in a batch
+        samples = len(y_pred)
+        # Clip data to prevent division by 0
+        y_pred_clipped = np.clip(y_pred, 1e-7, 1-1e-7)
+        # Probabilities for target values - only if categorical labels
+        # Check Neural Networks from Scratch - P.8 Implementing Loss (Skip to 11:10)
+        if(len(y_true.shape) == 1): # If the target class is only 1 dimension 
+            correct_confidences = y_pred_clipped[range(samples), y_true]
+        elif(len(y_true.shape) == 2):
+            correct_confidences = np.sum(y_pred_clipped * y_true, axis = 1)
+        # Losses
+        negative_log_likelihoods = -np.log(correct_confidences)
+        return negative_log_likelihoods
 
 # We set up 100 feature sets of 3 classes
 X, y = spiral_data(100, 3)
@@ -75,3 +108,16 @@ activation2.forward(layer2.output)
 
 # Print the result
 print(activation2.output[:5])
+
+loss_function = Categorical_Cross_Entropy_Loss()
+loss = loss_function.calculate(activation2.output, y)
+
+print("Loss: ", loss)
+
+# Calculate accuracy from output of activation2 and targets calculate values along first axis
+predictions = np.argmax(activation2.output, axis = 1)
+if len (y.shape) == 2 :
+    y = np.argmax(y, axis = 1)
+accuracy = np.mean(predictions == y)
+# Print accuracy
+print ("Acc:" , accuracy)
