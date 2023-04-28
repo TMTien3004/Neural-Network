@@ -1,0 +1,5 @@
+So far, we only know how to build layers of neurons, pass data through them and calculating the loss entropy. So the next step we will have to do is to determine how to adjust the weights and biases to decrease the loss.
+
+The brute force way to do this is to randomly changing the weights, checking the loss, and repeating this until we're happy with the lowest loss found. However, the change will not be very significant and it would took a lot of time and memory to find the right weight and bias. So how can we find the most optimal weights and biases?
+
+We use derivatives! (See Calculus: Early Transcendentals, Chapter 14: Partial Derivatives for more detail)

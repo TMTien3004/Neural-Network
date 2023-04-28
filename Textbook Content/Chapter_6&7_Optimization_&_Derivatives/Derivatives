@@ -1,0 +1,17 @@
+The Slope:
+- The tangent line is created by drawing a line between two points that are “infinitely close” on a curve, but this
+curve has to be continuous and smooth. 
+- Because this is a curve, there is no single slope. In fact, slope depends on where we measure it, so there are
+infinite number of courses.
+
+The Numerical Derivative: (Check The Numerical Derivative.ipynb for demostration). 
+- The method of calculating the slope of the tangent line using two infinitely close points is called numerical
+differentiation.
+- The smaller the delta (the distance between two points), the smoother the line becomes.
+- As you have known, the function for a straight line is y = mx + b, where "m" is the slope, "x" is the input and 
+b is the y-intercept, which also equals to: y - mx.
+
+The Analytical Derivative:
+- Numerical solution methods involve coming up with a number to find a solution, which is an approximation. 
+On the other hand, the analytical method offers the exact and much quicker, in terms of calculation, solution.
+- If you want to know how to do partial derivatives, see Calculus: Early Transcendentals, Chapter 14: Partial Derivatives for more detail.
