@@ -41,20 +41,41 @@ class Layer_Dense:
     # Layer initialization
     def __init__(self, n_inputs, n_neurons):
         # Initialize weights and biases
-        self.weights = 0.10 * np.random.randn(n_inputs, n_neurons) # We'll stick with random initialization for now
+        self.weights = 0.01 * np.random.randn(n_inputs, n_neurons) # We'll stick with random initialization for now
         self.biases = np.zeros((1, n_neurons))
 
     # Forward pass
     def forward(self, inputs):
         # Calculate output values from inputs, weights and biases
         self.output = np.dot(inputs, self.weights) + self.biases
+        # Remember input values
+        self.inputs = inputs
+    
+    # Backward pass (Backpropagation)
+    def backward(self, deltaValues):
+        # Gradients on parameters
+        self.deltaWeights = np.dot(self.inputs.T, deltaValues)
+        self.deltaBiases = np.sum(deltaValues, axis=0, keepdims=True)
+        # Gradients on values
+        self.deltaInputs = np.dot(deltaValues, self.weights.T)
+
 
 # ReLU Activation
 class ReLU_Activation:
     # Forward pass
     def forward(self, inputs):
+        # Remember input values
+        self.inputs = inputs
         # Calculate output values from inputs
         self.output = np.maximum(0, inputs)
+    
+    # Backward pass (Backpropagation)
+    def backward(self, deltaValues):
+        # Gradients on values
+        self.deltaInputs = deltaValues.copy()
+
+        # Zero gradient where input values were negative
+        self.deltaInputs[self.inputs <= 0 ] = 0
 
 # Softmax Activation
 class Softmax_Activation:
