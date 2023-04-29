@@ -1,1 +1,8 @@
 See Calculus: Early Transcendentals, Chapter 14: Partial Derivatives for more detail
+
+Partial Derivatives:
+- The partial derivative measures how much impact a single input has on a function’s output.
+- For example, if we pass a vector of 4 values to the neuron, it’s a singular variable in the code, but 4 separate inputs in the equation. This forms a function that takes multiple inputs.
+
+The Gradient:
+- The gradient is a vector composed of all of the partial derivatives of a function, calculated with respect to each input variable.
