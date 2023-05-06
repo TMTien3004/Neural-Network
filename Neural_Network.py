@@ -177,17 +177,52 @@ class Activation_Softmax_Loss_CategoricalCrossentropy():
 # Stochastic Gradient Decent (SGD) Optimizer
 class Optimizer_SGD:
     # Initialize the default learning rate of 1.0.
-    def __init__(self, learning_rate = 1.0):
+    def __init__(self, learning_rate = 1., decay = 0., momentum = 0.):
         self.learning_rate = learning_rate
+        self.current_learning_rate = learning_rate
+        self.decay = decay
+        self.iterations = 0
+        self.momentum = momentum
+
+    # Call once before any parameter updates
+    def pre_update_params(self):
+        if(self.decay):
+            self.current_learning_rate = self.learning_rate * (1. / (1 + self.decay * self.iterations))
 
     # Update paramaters
     def update_params(self, layer):
-        layer.weights += -self.learning_rate * layer.deltaWeights
-        layer.biases += -self.learning_rate * layer.deltaBiases
+        # If we use momentum
+        if self.momentum:
+            # If layer does not contain momentum arrays, create and fill them with zeros
+            if not hasattr(layer, 'weight_momentums'):
+                # If there is no weight, that also means there is no bias with momentum.
+                # So we add momentum to biases as well
+                layer.weight_momentums = np.zeros_like(layer.weights)
+                layer.bias_momentums = np.zeros_like(layer.biases)
+            
+            # If layer has momentum, we update weight and biases.
+            weight_updates = self.momentum * layer.weight_momentums - self.current_learning_rate * layer.deltaWeights
+            layer.weight_momentums = weight_updates
 
+            # Update bias with momentum
+            bias_updates = self.momentum * layer.bias_momentums - self.current_learning_rate * layer.deltaBiases
+            layer.bias_momentums = bias_updates
+
+        # Vanilla SGD updates (as before momentum update)
+        else:
+            layer.weights += -self.learning_rate * layer.deltaWeights
+            layer.biases += -self.learning_rate * layer.deltaBiases
+        
+        # Update weights and biases using either vanilla or momentum updates
+        layer.weights += weight_updates
+        layer.biases += bias_updates
+    
+    # Call once after any parameter updates
+    def post_update_params(self):
+        self.iterations += 1
 
 # We set up 100 feature sets of 3 classes
-X, y = spiral_data(100, 3)
+X, y = spiral_data(points=100, classes=3)
 
 # Create first dense layer with 2 input features and 64 output values
 layer1 = Layer_Dense(2, 64)
@@ -201,8 +236,9 @@ layer2 = Layer_Dense(64, 3)
 # Create Softmax classifier's combined loss and activation
 loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
 
-# Create optimizer object
-optimizer = Optimizer_SGD()
+# Create optimizer object with decay rate = 0.001 and momentum = 0.9
+# (There are parameters that might return better results, so set decay in anyway you want and have fun experimenting!)
+optimizer = Optimizer_SGD(decay=1e-3, momentum=0.9)
 
 # Train in loop
 for epoch in range (10001):
@@ -226,7 +262,7 @@ for epoch in range (10001):
     accuracy = np.mean(predictions == y)
 
     if not epoch % 100:
-        print("epoch: {}, acc: {:.3f}, loss: {:.3f}".format(epoch, accuracy, loss))
+        print("epoch: {}, acc: {:.3f}, loss: {:.3f}, lr: {}".format(epoch, accuracy, loss, optimizer.current_learning_rate))
 
     # Backward pass (Backpropagation)
     loss_activation.backward(loss_activation.output, y)
@@ -235,8 +271,10 @@ for epoch in range (10001):
     layer1.backward(activation1.deltaInputs)
 
     # Update the weights and biases
+    optimizer.pre_update_params()
     optimizer.update_params(layer1)
     optimizer.update_params(layer2)
+    optimizer.post_update_params()
 
 # Print gradients
 # print (layer1.deltaWeights)

@@ -1,6 +1,9 @@
 # Stochastic Gradient Decent (SGD)
 #---------------------------------------------------------------------------------------------------------------------------
 """
+Once we have calculated the gradient, we can use this information to adjust weights and biases to decrease the measure of 
+loss.
+
 What makes Machine Learning so extraordinary is the implementation of optimization algorithms/formulas, and we can even say
 that optimization is the backbone of ML.
 
@@ -16,6 +19,7 @@ A full pass of a training data is called epoch, where we simply repeatedly perfo
 optimization until we reach some stopping point.
 """
 
+# The optimizer’s task is to decrease loss, not raise accuracy directly
 class Optimizer_SGD:
     # Initialize the default learning rate of 1.0.
     def __init__(self, learning_rate = 1.0):

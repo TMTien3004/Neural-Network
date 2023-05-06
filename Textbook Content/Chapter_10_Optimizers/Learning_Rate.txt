@@ -1,0 +1,24 @@
+# Learning Rate
+#---------------------------------------------------------------------------------------------------------------------------
+The learning rate can only find the local minimum when we use gradient decent, but it is not always the global minumum of a 
+function. So how can we know (or even find) if we have reached the global minimum of a function?
+-> One way to do this is to use "momentum." (Sort of like saying if you throw a ball on a hill high enough, it will
+gain enough momentum while rolling downhill and fly off to the next hill)
+
+- If we set the learning rate too high, the model might not be able to find the global minimum (or even jump out of the
+minimum in some cases). However, we can try to lower the learning rate, raise the momentum, or possibly apply a learning rate decay, which is
+discussed below.
+
+- The consequence of setting up an unstable model is that the model will "jump" around random direction, unable to pinpoint
+the global minimum value. This is an example of “overshooting,” with every step — the direction of a change is correct,
+but the amount of the gradient applied is too large. In an extreme situation, we could cause a gradient explosion.
+- A gradient explosion is a situation where the parameter updates cause the output of the function to rise instead of fall, 
+and, with each step, the loss value and gradient become larger.
+
+- The challenge of building these model is to choose the hyper-parameters correctly. It is usually best to start with the 
+optimizer defaults, perform a few steps, and observe the training process when tuning different settings. How you choose the 
+learning rate, and other hyper-parameters, depends on the model, data, including the amount of data, the parameter 
+initialization method, etc. There is no single, best way to set hyper-parameters, but experience usually helps.
+
+What if we try set the learning rate as 0.85? (Go to Neural Network.py to test) 
+optimizer = Optimizer_SGD(.85)
