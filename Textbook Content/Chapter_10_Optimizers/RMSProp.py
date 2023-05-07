@@ -1,30 +1,26 @@
-# AdaGrad (Adaptive Gradient)
+# RMSProp (Root Mean Square Propagation)
 #---------------------------------------------------------------------------------------------------------------------------
 """
-The idea here is to normalize updates made to the features. During the training process, some weights can rise 
-significantly, while others tend to not change by much. 
+Similar to AdaGrad, RMSProp calculates an adaptive learning rate per parameter; it`s just calculated in a different way 
+than AdaGrad.
 
-AdaGrad provides a way to normalize parameter updates by keeping a history of previous updates — the bigger the sum of 
-the updates is, in either direction (positive or negative), the smaller updates are made further in training. This lets
-less-frequently updated parameters to keep-up with changes, effectively utilizing more neurons for training.
+Instead of continually adding squared gradients to a cache (like in Adagrad), it uses a moving average of the cache. Each 
+update to the cache retains a part of the cache and updates it with a fraction of the new, squared, gradients.
 
-The cache holds a history of squared gradients, and the parm_updates is a function of the learning rate multiplied by the 
-gradient (basic SGD so far) and then is divided by the square root of the cache plus some epsilon value.
+The new hyperparameter here is rho. Rho is the cache memory decay rate.
 """
-cache += parm_gradient ** 2
-parm_updates = learning_rate * parm_gradient / (sqrt(cache) * eps)
+cache = rho * cache + ( 1 - rho) * gradient ** 2
 
-import numpy as np
-
-# Adagrad Optimizer
-class Optimizer_Adagrad:
+# RMSProp Optimizer
+class Optimizer_RMSProp:
     # Initialize the default learning rate of 1.0.
-    def __init__(self, learning_rate = 1., decay = 0., epsilon = 1e-7):
+    def __init__(self, learning_rate = 1., decay = 0., epsilon = 1e-7, rho = 0.9):
         self.learning_rate = learning_rate
         self.current_learning_rate = learning_rate
         self.decay = decay
         self.iterations = 0
         self.epsilon = epsilon
+        self.rho = rho
 
     # Call once before any parameter updates
     def pre_update_params(self):
@@ -41,8 +37,8 @@ class Optimizer_Adagrad:
             layer.bias_cache = np.zeros_like(layer.biases)
             
         # Update cache with squared current gradients
-        layer.weight_cache += layer.deltaWeights**2
-        layer.bias_cache += layer.deltaBiases**2
+        layer.weight_cache = self.rho * layer.weight_cache + (1 - self.rho) * layer.deltaWeights ** 2
+        layer.bias_cache = self.rho * layer.bias_cache + (1 - self.rho) * layer.deltaBiases ** 2
 
         # Vanilla SGD parameter updates + normalization with square rooted cache
         layer.weights += -self.current_learning_rate * layer.deltaWeights / (np.sqrt(layer.weight_cache) + self.epsilon)
