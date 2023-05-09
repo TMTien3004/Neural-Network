@@ -39,10 +39,16 @@ X = [[1, 2, 3, 2.5], [2.0, 5.0, -1.0, 2.0], [-1.5, 2.7, 3.3, -0.8]]
 # Dense Layer
 class Layer_Dense:
     # Layer initialization
-    def __init__(self, n_inputs, n_neurons):
+    def __init__(self, n_inputs, n_neurons, weight_regularizer_l1=0, weight_regularizer_l2=0, bias_regularizer_l1=0, bias_regularizer_l2=0):
         # Initialize weights and biases
-        self.weights = 0.01 * np.random.randn(n_inputs, n_neurons) # We'll stick with random initialization for now
+        self.weights = 0.01 * np.random.randn(n_inputs, n_neurons) 
         self.biases = np.zeros((1, n_neurons))
+
+        # Set regularization strength
+        self.weight_regularizer_l1 = weight_regularizer_l1
+        self.weight_regularizer_l2 = weight_regularizer_l2
+        self.bias_regularizer_l1 = bias_regularizer_l1
+        self.bias_regularizer_l2 = bias_regularizer_l2
 
     # Forward pass
     def forward(self, inputs):
@@ -56,6 +62,28 @@ class Layer_Dense:
         # Gradients on parameters
         self.deltaWeights = np.dot(self.inputs.T, deltaValues)
         self.deltaBiases = np.sum(deltaValues, axis=0, keepdims=True)
+        
+        # Gradients on regularization
+        # L1 on weights
+        if self.weight_regularizer_l1 > 0:
+            dL1 = np.ones_like(self.weights)
+            dL1[self.weights < 0] = -1
+            self.deltaWeights += self.weight_regularizer_l1 * dL1
+        
+        # L2 on weights
+        if self.weight_regularizer_l2 > 0:
+            self.deltaWeights += 2 * self.weight_regularizer_l2 * self.weights
+        
+        # L1 on bias
+        if self.bias_regularizer_l1 > 0:
+            dL1 = np.ones_like(self.biases)
+            dL1[self.biases < 0] = -1
+            self.deltaBiases += self.bias_regularizer_l1 * dL1
+        
+        # L2 on bias
+        if self.bias_regularizer_l2 > 0:
+            self.deltaBiases += 2 * self.bias_regularizer_l2 * self.biases
+
         # Gradients on values
         self.deltaInputs = np.dot(deltaValues, self.weights.T)
 
@@ -104,6 +132,27 @@ class Softmax_Activation:
 
 # Common loss class
 class Loss:
+    def regularization_loss(self, layer):
+        regularization_loss = 0
+
+        # L1 regularization - weights
+        if layer.weight_regularizer_l1 > 0:
+            regularization_loss += layer.weight_regularizer_l1 * np.sum(np.abs(layer.weights))
+
+        # L2 regularization - weights
+        if layer.weight_regularizer_l2 > 0:
+            regularization_loss += layer.weight_regularizer_l2 * np.sum(layer.weights * layer.weights)
+
+        # L1 regularization - bias
+        if layer.bias_regularizer_l1 > 0:
+            regularization_loss += layer.bias_regularizer_l1 * np.sum(np.abs(layer.biases))
+
+        # L2 regularization - bias
+        if layer.bias_regularizer_l2 > 0:
+            regularization_loss += layer.bias_regularizer_l2 * np.sum(layer.biases * layer.biases)
+
+        return regularization_loss
+
     # Calculates the data and regularization losses given model output and ground truth values
     def calculate (self, output, y): # y is the intended target values
         # Calculate sample losses
@@ -313,7 +362,7 @@ class Optimizer_Adam:
     # Call once before any parameter updates
     def pre_update_params(self):
         if(self.decay):
-            self.current_learning_rate = self.learning_rate * (1. / (1 + self.decay * self.iterations))
+            self.current_learning_rate = self.learning_rate * (1. / (1. + self.decay * self.iterations))
 
     # Update paramaters
     def update_params(self, layer):
@@ -352,16 +401,16 @@ class Optimizer_Adam:
 
 
 # We set up 100 feature sets of 3 classes
-X, y = spiral_data(points=100, classes=3)
+X, y = spiral_data(points=1000, classes=3)
 
-# Create first dense layer with 2 input features and 64 output values
-layer1 = Layer_Dense(2, 64)
+# Create first dense layer with 2 input features and 256 output values
+layer1 = Layer_Dense(2, 512, weight_regularizer_l2 = 5e-4, bias_regularizer_l2 = 5e-4)
 
 # Create ReLU Activation
 activation1 = ReLU_Activation()
 
 # Create second dense layer with 64 input features and 3 output values
-layer2 = Layer_Dense(64, 3)
+layer2 = Layer_Dense(512, 3)
 
 # Create Softmax classifier's combined loss and activation
 loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
@@ -371,7 +420,7 @@ loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
 # optimizer = Optimizer_SGD(decay=1e-3, momentum=0.9)
 # optimizer = Optimizer_Adagrad(decay=1e-4)
 # optimizer = Optimizer_RMSProp(learning_rate = 0.02, decay = 1e-5, rho = 0.999)
-optimizer = Optimizer_Adam(learning_rate = 0.05, decay = 5e-7)
+optimizer = Optimizer_Adam(learning_rate = 0.02, decay = 5e-7)
 
 # Train in loop
 for epoch in range (10001):
@@ -386,16 +435,22 @@ for epoch in range (10001):
 
     # Perform a forward pass through the activation/loss function
     # takes the output of second dense layer here and returns loss
-    loss = loss_activation.forward(layer2.output, y)
+    data_loss = loss_activation.forward(layer2.output, y)
+
+    # Calculate regularization penalty
+    regularization_loss = loss_activation.loss.regularization_loss(layer1) + loss_activation.loss.regularization_loss(layer2)
+
+    # Calculate overall loss
+    loss = data_loss + regularization_loss
 
     # Calculate accuracy from output of activation2 and targets calculate values along first axis
     predictions = np.argmax(loss_activation.output, axis = 1)
-    if len (y.shape) == 2 :
+    if len (y.shape) == 2:
         y = np.argmax(y, axis = 1)
     accuracy = np.mean(predictions == y)
 
     if not epoch % 100:
-        print("epoch: {}, acc: {:.3f}, loss: {:.3f}, lr: {}".format(epoch, accuracy, loss, optimizer.current_learning_rate))
+        print("epoch: {}, acc: {:.3f}, loss: {:.3f} (data_loss: {:.3f}, reg_loss: {:.3f}), lr: {}".format(epoch, accuracy, loss, data_loss, regularization_loss, optimizer.current_learning_rate))
 
     # Backward pass (Backpropagation)
     loss_activation.backward(loss_activation.output, y)
@@ -409,8 +464,26 @@ for epoch in range (10001):
     optimizer.update_params(layer2)
     optimizer.post_update_params()
 
-# Print gradients
-# print (layer1.deltaWeights)
-# print (layer1.deltaBiases)
-# print (layer2.deltaWeights)
-# print (layer2.deltaBiases)
+# Validate the model
+# Test dataset
+X_test, y_test = spiral_data(points=100, classes=3)
+
+# Perform a forward pass
+layer1.forward(X_test)
+
+# Perform a forward pass through activation function
+activation1.forward(layer1.output)
+
+# Perform a forward pass through second layer
+layer2.forward(activation1.output)
+
+# Perform a forward pass through the activation/loss function
+loss = loss_activation.forward(layer2.output, y_test)
+
+# Calculate accuracy from output of activation2 and targets calculate values along first axis
+predictions = np.argmax(loss_activation.output, axis = 1)
+if len(y_test.shape) == 2:
+    y_test = np.argmax(y_test, axis = 1)
+accuracy = np.mean(predictions == y_test)
+
+print("validation, acc: {:.3f}, loss: {:.3f}".format(accuracy, loss))
