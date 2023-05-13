@@ -88,6 +88,27 @@ class Layer_Dense:
         self.deltaInputs = np.dot(deltaValues, self.weights.T)
 
 
+# Dropout
+class Layer_Dropout:
+    def __init__(self, rate):
+        # Store rate (how much percentage of neurons we want to keep back)
+        self.rate = 1 - rate
+    
+    # Forward pass
+    def forward(self, inputs):
+        # Save input values 
+        self.inputs = inputs
+        # Generate and save scale mask
+        self.binary_mask = np.random.binomial(1, self.rate, size=inputs.shape) / self.rate
+        # Apply mask to output values
+        self.output = inputs * self.binary_mask
+
+    # Backward pass
+    def backward(self, deltaValues):
+        # Gradient on values
+        self.dinputs = deltaValues * self.binary_mask
+
+
 # ReLU Activation
 class ReLU_Activation:
     # Forward pass
@@ -403,14 +424,17 @@ class Optimizer_Adam:
 # We set up 100 feature sets of 3 classes
 X, y = spiral_data(points=1000, classes=3)
 
-# Create first dense layer with 2 input features and 256 output values
-layer1 = Layer_Dense(2, 512, weight_regularizer_l2 = 5e-4, bias_regularizer_l2 = 5e-4)
+# Create first dense layer with 2 input features and 64 output values
+layer1 = Layer_Dense(2, 64, weight_regularizer_l2 = 5e-4, bias_regularizer_l2 = 5e-4)
 
 # Create ReLU Activation
 activation1 = ReLU_Activation()
 
+# Create dropout layer
+dropout1 = Layer_Dropout(0.1)
+
 # Create second dense layer with 64 input features and 3 output values
-layer2 = Layer_Dense(512, 3)
+layer2 = Layer_Dense(64, 3)
 
 # Create Softmax classifier's combined loss and activation
 loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
@@ -420,7 +444,7 @@ loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
 # optimizer = Optimizer_SGD(decay=1e-3, momentum=0.9)
 # optimizer = Optimizer_Adagrad(decay=1e-4)
 # optimizer = Optimizer_RMSProp(learning_rate = 0.02, decay = 1e-5, rho = 0.999)
-optimizer = Optimizer_Adam(learning_rate = 0.02, decay = 5e-7)
+optimizer = Optimizer_Adam(learning_rate = 0.05, decay = 5e-5)
 
 # Train in loop
 for epoch in range (10001):
@@ -429,6 +453,9 @@ for epoch in range (10001):
 
     # Perform a forward pass through activation function
     activation1.forward(layer1.output)
+
+    # Perform a forward pass through dropout layer
+    dropout1.forward(activation1.output)
 
     # Perform a forward pass of the second layer and takes outputs of activation function of first layer as inputs
     layer2.forward(activation1.output)
@@ -455,6 +482,7 @@ for epoch in range (10001):
     # Backward pass (Backpropagation)
     loss_activation.backward(loss_activation.output, y)
     layer2.backward(loss_activation.deltaInputs)
+    dropout1.backward(layer2.deltaInputs)
     activation1.backward(layer2.deltaInputs)
     layer1.backward(activation1.deltaInputs)
 
