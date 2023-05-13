@@ -11,28 +11,28 @@ with numbers drawn from a Bernoulli distribution. A Bernoulli distribution is a 
 where we can get a value of 1 with a probability of p and value of 0 with a probability of q (q = 1 - p).
 """
 
-import random
-dropout_rate = 0.5
+import numpy as np
+
+dropout_rate = 0.2
 # Example output containing 10 values
-example_output = [ 0.27 , - 1.03 , 0.67 , 0.99 , 0.05 , - 0.37 , - 2.01 , 1.13 , - 0.07 , 0.73 ]
+example_output = np.array([0.27, -1.03, 0.67, 0.99, 0.05, -0.37, -2.01, 1.13, -0.07, 0.73])
+print("Sum initial: {}".format(sum(example_output)))
 
-while True :
-# Randomly choose index and set value to 0
-    index = random.randint( 0 , len (example_output) - 1 )
-    example_output[index] = 0
-    # We might set an index that already is zeroed
-    # There are different ways of overcoming this problem,
-    # for simplicity we count values that are exactly 0
-    # while it's extremely rare in real model that weights
-    # are exactly 0, this is not the best method for sure
-    dropped_out = 0
-    for value in example_output:
-        if value == 0 :
-            dropped_out += 1
+"""
+np.random.binomial(n, p, size) will have three input:
+- n: number of experiments (or rather how many tosses of the coin do you want to do)
+- p: the probability of a toss
+- size: size is how many of these `tests` to run, and the return is a list of overall results
 
-    # If required number of outputs is zeroed - leave the loop
-        if dropped_out / len (example_output) >= dropout_rate:
-            break
+np.random.binomial(2, 0.5, size = 10)
+=> [0, 0, 1, 2, 0, 2, 0, 1, 0, 2]
+"""
 
-print(example_output)
-print("Hello?")
+sums = []
+for i in range(10000):
+    # Basically, the point of this is to disable certain neurons. If we put the dropout_rate of 0.3 (30%), then it only "disables"
+    # any 3 out of 10 neurons and keep the remaining 7 neurons.
+    example_output2 = example_output * np.random.binomial(1, 1 - dropout_rate, example_output.shape) / (1-dropout_rate)
+    sums.append(sum(example_output2))
+
+print("Mean sum: {}".format(np.mean(sums)))
