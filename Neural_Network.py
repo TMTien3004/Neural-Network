@@ -151,6 +151,18 @@ class Softmax_Activation:
             self.deltaInputs[index] = np.dot(jacobian_matrix, single_dvalues)     
 
 
+# Sigmoid Activation Function
+class Activation_Sigmoid:
+    def forward(self, inputs):
+        # Save input and calculate/save output
+        self.inputs = inputs
+        self.output = 1 / (1 + np.exp(-inputs))
+
+    def backward(self, deltaValues):
+        # Derivative - calculates from output of the sigmoid function
+        self.deltaInputs = deltaValues * (1 - self.output) * self.output
+
+
 # Common loss class
 class Loss:
     def regularization_loss(self, layer):
@@ -241,6 +253,38 @@ class Activation_Softmax_Loss_CategoricalCrossentropy():
         self.deltaInputs = deltaValues.copy()
         # Calculate gradient
         self.deltaInputs[range(samples), y_true] -= 1
+        # Normalize gradient
+        self.deltaInputs = self.deltaInputs / samples
+
+
+# Binary Cross-Entropy Loss
+class Binary_Cross_Entropy_Loss(Loss):
+    def forward(self, y_pred, y_true):
+        # Clip data to prevent division by 0
+        # Clip both sides to not drag mean towards any value
+        y_pred_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
+
+        # Calculate sample-wise loss
+        sample_losses = -(y_true * np.log(y_pred_clipped) + (1 - y_true) * np.log(1 - y_pred_clipped))
+        sample_losses = np.mean(sample_losses, axis = -1)
+
+        # Return sample loss
+        return sample_losses
+
+    def backward(self, deltaValues, y_true):
+        # Number of samples
+        samples = len(deltaValues)
+        # Number of outputs in every sample
+        # We'll use the first sample to count them
+        outputs = len(deltaValues[0])
+
+        # Clip data to prevent division by 0
+        # Clip both sides to not drag mean towards any value
+        clipped_deltaValues = np.clip(deltaValues, 1e-7 , 1 - 1e-7 )
+
+        # Calculate gradient
+        self.deltaInputs = -(y_true / clipped_deltaValues - (1 - y_true) / (1 - clipped_deltaValues)) / outputs
+        
         # Normalize gradient
         self.deltaInputs = self.deltaInputs / samples
 
@@ -421,8 +465,11 @@ class Optimizer_Adam:
         self.iterations += 1
 
 
-# We set up 100 feature sets of 3 classes
-X, y = spiral_data(points=1000, classes=3)
+# We set up 100 feature sets of 2 classes
+X, y = spiral_data(points=100, classes=2)
+
+# Reshape labels to be a list of lists
+y = y.reshape(-1, 1)
 
 # Create first dense layer with 2 input features and 64 output values
 layer1 = Layer_Dense(2, 64, weight_regularizer_l2 = 5e-4, bias_regularizer_l2 = 5e-4)
@@ -430,21 +477,22 @@ layer1 = Layer_Dense(2, 64, weight_regularizer_l2 = 5e-4, bias_regularizer_l2 = 
 # Create ReLU Activation
 activation1 = ReLU_Activation()
 
-# Create dropout layer
-dropout1 = Layer_Dropout(0.1)
+# Create second dense layer with 64 input features and 1 output values
+layer2 = Layer_Dense(64, 1)
 
-# Create second dense layer with 64 input features and 3 output values
-layer2 = Layer_Dense(64, 3)
+# Create Sigmoid activation:
+activation2 = Activation_Sigmoid()
 
-# Create Softmax classifier's combined loss and activation
-loss_activation = Activation_Softmax_Loss_CategoricalCrossentropy()
+# Create Binary Cross-entropy Loss function
+loss_function = Binary_Cross_Entropy_Loss()
+
 
 # Create optimizer object
 # (There are parameters that might return better results, so set decay in anyway you want and have fun experimenting!)
 # optimizer = Optimizer_SGD(decay=1e-3, momentum=0.9)
 # optimizer = Optimizer_Adagrad(decay=1e-4)
 # optimizer = Optimizer_RMSProp(learning_rate = 0.02, decay = 1e-5, rho = 0.999)
-optimizer = Optimizer_Adam(learning_rate = 0.05, decay = 5e-5)
+optimizer = Optimizer_Adam(decay = 5e-7)
 
 # Train in loop
 for epoch in range (10001):
@@ -454,35 +502,36 @@ for epoch in range (10001):
     # Perform a forward pass through activation function
     activation1.forward(layer1.output)
 
-    # Perform a forward pass through dropout layer
-    dropout1.forward(activation1.output)
-
     # Perform a forward pass of the second layer and takes outputs of activation function of first layer as inputs
     layer2.forward(activation1.output)
 
+    # Perform a forward pass through activation function
+    # takes the output of second dense layer here
+    activation2.forward(layer2.output)
+
     # Perform a forward pass through the activation/loss function
     # takes the output of second dense layer here and returns loss
-    data_loss = loss_activation.forward(layer2.output, y)
+    data_loss = loss_function.calculate(layer2.output, y)
 
     # Calculate regularization penalty
-    regularization_loss = loss_activation.loss.regularization_loss(layer1) + loss_activation.loss.regularization_loss(layer2)
+    regularization_loss = loss_function.regularization_loss(layer1) + loss_function.regularization_loss(layer2)
 
     # Calculate overall loss
     loss = data_loss + regularization_loss
 
     # Calculate accuracy from output of activation2 and targets calculate values along first axis
-    predictions = np.argmax(loss_activation.output, axis = 1)
-    if len (y.shape) == 2:
-        y = np.argmax(y, axis = 1)
+    # Part in the brackets returns a binary mask - array consisting
+    # of True/False values, multiplying it by 1 changes it into array of 1s and 0s
+    predictions = (activation2.output > 0.5 ) * 1
     accuracy = np.mean(predictions == y)
 
     if not epoch % 100:
         print("epoch: {}, acc: {:.3f}, loss: {:.3f} (data_loss: {:.3f}, reg_loss: {:.3f}), lr: {}".format(epoch, accuracy, loss, data_loss, regularization_loss, optimizer.current_learning_rate))
 
     # Backward pass (Backpropagation)
-    loss_activation.backward(loss_activation.output, y)
-    layer2.backward(loss_activation.deltaInputs)
-    dropout1.backward(layer2.deltaInputs)
+    loss_function.backward(activation2.output, y)
+    activation2.backward(loss_function.deltaInputs)
+    layer2.backward(activation2.deltaInputs)
     activation1.backward(layer2.deltaInputs)
     layer1.backward(activation1.deltaInputs)
 
@@ -494,7 +543,11 @@ for epoch in range (10001):
 
 # Validate the model
 # Test dataset
-X_test, y_test = spiral_data(points=100, classes=3)
+X_test, y_test = spiral_data(points=100, classes=2)
+
+# Reshape labels to be a list of lists
+# Inner list contains one output (either 0 or 1) per each output neuron, 1 in this case
+y_test = y_test.reshape(-1, 1)
 
 # Perform a forward pass
 layer1.forward(X_test)
@@ -505,13 +558,16 @@ activation1.forward(layer1.output)
 # Perform a forward pass through second layer
 layer2.forward(activation1.output)
 
+# Perform a forward pass through activation function
+activation2.forward(layer2.output)
+
 # Perform a forward pass through the activation/loss function
-loss = loss_activation.forward(layer2.output, y_test)
+loss = loss_function.calculate(activation2.output, y_test)
 
 # Calculate accuracy from output of activation2 and targets calculate values along first axis
-predictions = np.argmax(loss_activation.output, axis = 1)
-if len(y_test.shape) == 2:
-    y_test = np.argmax(y_test, axis = 1)
-accuracy = np.mean(predictions == y_test)
+# Part in the brackets returns a binary mask - array consisting
+# of True/False values, multiplying it by 1 changes it into array of 1s and 0s
+predictions = (activation2.output > 0.5 ) * 1
+accuracy = np.mean(predictions == y)
 
 print("validation, acc: {:.3f}, loss: {:.3f}".format(accuracy, loss))
