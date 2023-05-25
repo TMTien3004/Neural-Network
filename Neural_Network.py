@@ -118,6 +118,10 @@ class ReLU_Activation:
 
         # Zero gradient where input values were negative
         self.deltaInputs[self.inputs <= 0 ] = 0
+    
+    # Calculate predictions for outputs
+    def predictions(self, outputs):
+        return outputs
 
 
 # Softmax Activation
@@ -141,7 +145,11 @@ class Softmax_Activation:
             # Calculate Jacobian matrix of the output
             jacobian_matrix = np.diagflat(single_output) - np.dot(single_output, single_output.T)
             # Calculate sample-wise gradient and add it to the array of sample gradients
-            self.deltaInputs[index] = np.dot(jacobian_matrix, single_dvalues)     
+            self.deltaInputs[index] = np.dot(jacobian_matrix, single_dvalues) 
+
+    # Calculate predictions for outputs
+    def predictions(self, outputs):
+        return np.argmax(outputs, axis = 1)    
 
 
 # Sigmoid Activation Function
@@ -154,6 +162,10 @@ class Activation_Sigmoid:
     def backward(self, deltaValues):
         # Derivative - calculates from output of the sigmoid function
         self.deltaInputs = deltaValues * (1 - self.output) * self.output
+
+    # Calculate predictions for outputs
+    def predictions(self, outputs):
+        return (outputs > 0.5 ) * 1
 
 
 # Linear activation
@@ -169,29 +181,41 @@ class Activation_Linear:
         # Derivative is 1, 1 * dvalues = dvalues - the chain rule
         self.deltaInputs = deltaValues.copy()
 
+    # Calculate predictions for outputs
+    def predictions(self, outputs):
+        return outputs
+
 
 # Common loss class
 class Loss:
+    # Regularization loss calculation
     def regularization_loss(self, layer):
         regularization_loss = 0
 
-        # L1 regularization - weights
-        if layer.weight_regularizer_l1 > 0:
-            regularization_loss += layer.weight_regularizer_l1 * np.sum(np.abs(layer.weights))
+        # Calculate regularization loss
+        # iterate all trainable layers
+        for layer in self.trainable_layers:
+            # L1 regularization - weights
+            if layer.weight_regularizer_l1 > 0:
+                regularization_loss += layer.weight_regularizer_l1 * np.sum(np.abs(layer.weights))
 
-        # L2 regularization - weights
-        if layer.weight_regularizer_l2 > 0:
-            regularization_loss += layer.weight_regularizer_l2 * np.sum(layer.weights * layer.weights)
+            # L2 regularization - weights
+            if layer.weight_regularizer_l2 > 0:
+                regularization_loss += layer.weight_regularizer_l2 * np.sum(layer.weights * layer.weights)
 
-        # L1 regularization - bias
-        if layer.bias_regularizer_l1 > 0:
-            regularization_loss += layer.bias_regularizer_l1 * np.sum(np.abs(layer.biases))
+            # L1 regularization - bias
+            if layer.bias_regularizer_l1 > 0:
+                regularization_loss += layer.bias_regularizer_l1 * np.sum(np.abs(layer.biases))
 
-        # L2 regularization - bias
-        if layer.bias_regularizer_l2 > 0:
-            regularization_loss += layer.bias_regularizer_l2 * np.sum(layer.biases * layer.biases)
+            # L2 regularization - bias
+            if layer.bias_regularizer_l2 > 0:
+                regularization_loss += layer.bias_regularizer_l2 * np.sum(layer.biases * layer.biases)
 
         return regularization_loss
+
+    # Set/remember trainable layers
+    def remember_trainable_layers(self, trainable_layers):
+        self.trainable_layers = trainable_layers
 
     # Calculates the data and regularization losses given model output and ground truth values
     def calculate (self, output, y): # y is the intended target values
@@ -200,7 +224,131 @@ class Loss:
         # Calculate mean loss
         data_loss = np.mean(sample_losses)
         # Return mean loss
-        return data_loss
+        return data_loss, self.regularization_loss()
+
+
+# Model class
+class Model:
+    def __init__(self):
+        # Create a list of network objects
+        self.layers = []
+    
+    # Add a objects to the model
+    def add(self, layer):
+        self.layers.append(layer)
+
+
+    # Set loss, optimizer and accuracy
+    def set(self, *, loss, optimizer, accuracy):
+        self.loss = loss
+        self.optimizer = optimizer
+        self.accuracy = accuracy
+
+
+    # Finalize the model
+    def finalize(self):
+        # Create and set the input layer
+        self.inputLayer = Layer_Input()
+    
+        # Count all the objects
+        layer_count = len(self.layers)
+
+        # Initialize a list containing trainable layers:
+        self.trainable_layers = []
+        
+        # Iterate the objects
+        for i in range(layer_count):
+
+            # If it's the first layer, the previous layer object is the input layer
+            if i == 0:
+                self.layers[i].prev = self.inputLayer
+                self.layers[i].next = self.layers[i+1]
+            
+            # All layers except for the first and the last
+            elif i < layer_count - 1:
+                self.layers[i].prev = self.layers[i-1]
+                self.layers[i].next = self.layers[i+1]
+            
+            # The last layer - the next object is the loss
+            else:
+                self.layers[i].prev = self.layers[i-1]
+                self.layers[i].next = self.loss
+                self.output_layer_activation = self.layers[i]
+
+            # If layer contains an attribute called "weights",
+            # it's a trainable layer -
+            # add it to the list of trainable layers
+            # We don't need to check for biases -
+            # checking for weights is enough
+            if hasattr (self.layers[i], 'weights'):
+            self.trainable_layers.append(self.layers[i])
+        
+        # Update loss object with trainable layers
+        self.loss.remember_trainable_layers(self.trainable_layers)
+                
+    # Train the model
+    def train(self, X, y, *, epochs=1, print_every=1):
+        # Initialize accuracy object
+        self.accuracy.init(y)
+
+        # Main training loop
+            for epoch in range ( 1 , epochs + 1 ):
+                # Perform the forward pass
+                output = self.forward(X)
+                
+                # Calculate loss
+                data_loss, regularization_loss = self.loss.calculate(output, y)
+                loss = data_loss + regularization_loss
+
+                # Get predictions and calculate an accuracy
+                predictions = self.output_layer_activation.predictions(output)
+                accuracy = self.accuracy.calculate(predictions, y)
+
+    # Forward pass
+    def forward(self, X):
+        # Call forward method on the input layer
+        self.input_layer.forward(X)
+
+        # Call forward method of every object in a chain
+        # Pass output of the previous object as a parameter
+        for layer in self.layers:
+            layer.forward(layer.prev.output)
+        
+        # Return output
+        return layer.output
+
+
+# Common accuracy class
+class Accuracy:
+    # Calculates an accuracy
+    # given predictions and ground truth values
+    def calculate(self, predictions, y):
+
+        # Get comparison results
+        comparisons = self.compare(predictions, y)
+
+        # Calculate an accuracy
+        accuracy = np.mean(comparisons)
+
+        return accuracy
+
+
+# Accuracy calculation for regression model
+class Accuracy_Regression(Accuracy):
+    
+    def __init__(self):
+        # Create precision property
+        self.precision = None
+
+    # Calculates precision value
+    # based on passed in ground truth
+    def init(self, y, reinit = False):
+        if self.precision is None or reinit:
+            self.precision = np.std(y) / 250
+    
+    # Compares predictions to the ground truth values
+    def compare(self, predictions, y):
+        return np.absolute(predictions - y) < self.precision
 
 
 # Cross-Entropy Loss
