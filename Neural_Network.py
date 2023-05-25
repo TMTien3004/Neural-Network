@@ -761,9 +761,9 @@ X_test, y_test = spiral_data(points=100, classes=3)
 model = Model()
 
 # Add layers
-model.add(Layer_Dense(2, 64, weight_regularizer_l2 = 5e-4, bias_regularizer_l2 = 5e-4))
+model.add(Layer_Dense(2, 512, weight_regularizer_l2 = 5e-4, bias_regularizer_l2 = 5e-4))
 model.add(Layer_Dropout(0.1))
-model.add(Layer_Dense(64, 3))
+model.add(Layer_Dense(512, 3))
 model.add(Softmax_Activation())
 
 # Set loss, optimizer and accuracy objects
