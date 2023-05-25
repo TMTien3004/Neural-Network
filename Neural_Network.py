@@ -106,6 +106,13 @@ class Layer_Dropout:
         self.deltaInputs = deltaValues * self.binary_mask
 
 
+# Input "layer"
+class Layer_Input:
+    # Forward pass
+    def forward(self, inputs, training):
+        self.output = inputs
+
+
 # ReLU Activation
 class ReLU_Activation:
     # Forward pass
@@ -224,7 +231,7 @@ class Loss:
         self.trainable_layers = trainable_layers
 
     # Calculates the data and regularization losses given model output and ground truth values
-    def calculate (self, output, y, *, include_regularization = False): # y is the intended target values
+    def calculate(self, output, y, include_regularization=False): # y is the intended target values
         # Calculate sample losses
         sample_losses = self.forward(output, y)
 
@@ -422,7 +429,7 @@ class Model:
         self.layers.append(layer)
 
     # Set loss, optimizer and accuracy
-    def set(self, *, loss, optimizer, accuracy):
+    def set(self, loss, optimizer, accuracy):
         self.loss = loss
         self.optimizer = optimizer
         self.accuracy = accuracy
@@ -430,7 +437,7 @@ class Model:
     # Finalize the model
     def finalize(self):
         # Create and set the input layer
-        self.inputLayer = Layer_Input()
+        self.input_layer = Layer_Input()
     
         # Count all the objects
         layer_count = len(self.layers)
@@ -443,7 +450,7 @@ class Model:
 
             # If it's the first layer, the previous layer object is the input layer
             if i == 0:
-                self.layers[i].prev = self.inputLayer
+                self.layers[i].prev = self.input_layer
                 self.layers[i].next = self.layers[i+1]
             
             # All layers except for the first and the last
@@ -463,7 +470,7 @@ class Model:
             # We don't need to check for biases -
             # checking for weights is enough
             if hasattr (self.layers[i], 'weights'):
-            self.trainable_layers.append(self.layers[i])
+                self.trainable_layers.append(self.layers[i])
         
             # Update loss object with trainable layers
             self.loss.remember_trainable_layers(self.trainable_layers)
@@ -473,13 +480,13 @@ class Model:
         # create an object of combined activation
         # and loss function containing
         # faster gradient calculation
-        if isinstance(self.layers[-1], Activation_Softmax) and isinstance(self.loss, Categorical_Cross_Entropy_Loss):
+        if isinstance(self.layers[-1], Softmax_Activation) and isinstance(self.loss, Categorical_Cross_Entropy_Loss):
             # Create an object of combined activation
             # and loss functions
             self.softmax_classifier_output = Activation_Softmax_Loss_CategoricalCrossentropy()
                             
     # Train the model
-    def train(self, X, y, *, epochs=1, print_every=1, validation_data=None):
+    def train(self, X, y, epochs=1, print_every=1, validation_data=None):
         # Initialize accuracy object
         self.accuracy.init(y)
 
@@ -507,7 +514,7 @@ class Model:
 
             # Print a summary
             if not epoch % print_every:
-                print("epoch: {}, acc: {:.3f}, loss: {:.3f} (data_loss: {:.3f}, reg_loss: {:.3f}), lr: {}".format(epoch, accuracy, loss, data_loss, regularization_loss, optimizer.current_learning_rate))  
+                print("epoch: {}, acc: {:.3f}, loss: {:.3f} (data_loss: {:.3f}, reg_loss: {:.3f}), lr: {}".format(epoch, accuracy, loss, data_loss, regularization_loss, self.optimizer.current_learning_rate))  
         
         # If there is the validation data
         if validation_data is not None:
@@ -516,7 +523,7 @@ class Model:
             X_val, y_val = validation_data
 
             # Perform the forward pass
-            output = self.forward(X_val)
+            output = self.forward(X_val, training = False)
 
             # Calculate the loss
             loss = self.loss.calculate(output, y_val)
@@ -747,23 +754,23 @@ class Optimizer_Adam:
         self.iterations += 1
 
 # Create train and test dataset
-X, y = spiral_data(samples=1000, classes=3)
-X_test, y_test = spiral_data(samples=100, classes=3)
+X, y = spiral_data(points=1000, classes=3)
+X_test, y_test = spiral_data(points=100, classes=3)
 
 # Instantiate the model
 model = Model()
 
 # Add layers
-model.add(Layer_Dense(2, 512, weight_regularizer_l2 = 5e-4, bias_regularizer_l2 = 5e-4))
+model.add(Layer_Dense(2, 64, weight_regularizer_l2 = 5e-4, bias_regularizer_l2 = 5e-4))
 model.add(Layer_Dropout(0.1))
-model.add(Layer_Dense(512, 3))
+model.add(Layer_Dense(64, 3))
 model.add(Softmax_Activation())
 
 # Set loss, optimizer and accuracy objects
-model.set(loss=Categorical_Cross_Entropy_Loss(), optimizer = Optimizer_Adam(learning_rate = 0.05 , decay = 5e-5), accuracy = Accuracy_Categorical())
+model.set(loss=Categorical_Cross_Entropy_Loss(), optimizer = Optimizer_Adam(learning_rate=0.05, decay=5e-5), accuracy=Accuracy_Categorical())
 
 # Finalize the model
 model.finalize()
 
 # Train the model
-model.train(X, y, validation_data = (X_test, y_test), epochs = 10000 , print_every = 100)
+model.train(X, y, validation_data=(X_test, y_test), epochs=10000, print_every=100)
