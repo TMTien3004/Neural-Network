@@ -1,9 +1,11 @@
+# Data Preparation
+#---------------------------------------------------------------------------------------------------------------------------
 from zipfile import ZipFile
 import os
 import urllib
 import urllib.request
 
-# If you want to run this in Python 3.6, type in the command line: python3 data.py
+# If you want to run this in Python 3.6, type in the command line: python3 Data_Set.py
 # Make sure that you go to the directory where this file is located before running the command above.
 
 URL = 'https://nnfs.io/datasets/fashion_mnist_images.zip'

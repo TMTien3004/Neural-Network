@@ -1,10 +1,17 @@
-# Data Loading
+# Data Preprocessing
 #---------------------------------------------------------------------------------------------------------------------------
-# If you want to run this program in Python 3.6, type in the command line: python3 Data_Loading.py
+# If you want to run this program in Python 3.6, type in the command line: python3 Data_Preprocessing.py
+
+"""
+Next, we will scale the data (not the images, but the data representing them, the numbers). Neural networks tend to work 
+best with data in the range of either 0 to 1 or -1 to 1, but the pixel values in our images are in the range of 0 to 255.
+
+In this example, we could scale images to be between the range of -1 and 1 by taking each pixel value, subtracting half the 
+maximum of all pixel values (i.e., 255/2 = 127.5), then dividing by this same half to produce a range bounded by -1 and 1.
+"""
 import os
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 
 # Loads a MNIST dataset
 def load_mnist_dataset (dataset, path):
@@ -37,25 +44,21 @@ def create_data_mnist(path):
     # And return all the data
     return X, y, X_test, y_test
 
-# Create dataset
+# Create dataset (Load the data)
 X, y, X_test, y_test = create_data_mnist('fashion_mnist_images')
+
+# Scale features
+X = (X.astype(np.float32) - 127.5) / 127.5
+X_test = (X_test.astype(np.float32) - 127.5) / 127.5
+
+
 """
-There are 6000 samples for each class, and 10 classes in total, which means that there are 60000 images in the training set.
-Since the number of samples for each class is the same, the dataset is balanced.
+Since our Dense layers work on batches of 1-dimensional vectors, They cannot operate on images shaped as a 28x28, 
+2-dimensional array. We need to take these 28x28 images and flatten them into 1-dimensional vectors with 784 elements.
 """
+# print(X.min(), X.max())
+# print(X.shape)
 
-# # Count the number of images in each class
-# files = os.listdir('fashion_mnist_images/train/0')
-# print(files[:10])
-# print(len(files))
-
-# # Load an image using OpenCV
-# image_data = cv2.imread( 'fashion_mnist_images/train/4/0011.png' , cv2.IMREAD_UNCHANGED)
-# print(image_data)
-
-# # Display the image on the terminal
-# np.set_printoptions(linewidth = 200)
-
-# # Print the image data on the screen
-# plt.imshow(image_data, cmap = 'gray')
-# plt.show()
+# Reshape to vectors
+X = X.reshape(X.shape[0], -1)
+X_test = X_test.reshape(X_test.shape[0], -1)
