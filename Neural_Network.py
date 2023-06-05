@@ -470,6 +470,51 @@ class Model:
         # Softmax classifier's output object
         self.softmax_classifier_output = None
     
+    # Evaluate the model
+    def evaluate(self, X_val, y_val, *, batch_size = None):
+        # Default value if batch size is not being set
+        validation_steps = 1
+
+        # Calculate number of steps
+        if batch_size is not None:
+            validation_steps = len(X_val) // batch_size
+
+            # If there are some remaining data, add one more step
+            if validation_steps * batch_size < len(X_val):
+                validation_steps += 1
+        
+        # Reset accumulated accuracy in the accuracy object
+        self.loss.new_pass()
+        self.accuracy.new_pass()
+            
+        # Iterate over the steps
+        for step in range(validation_steps):
+            # If batch size is not set - train using one step and full dataset
+            if batch_size is None:
+                batch_X = X_val
+                batch_y = y_val
+            else:
+                # Get batch data
+                batch_X = X_val[step*batch_size:(step+1)*batch_size]
+                batch_y = y_val[step*batch_size:(step+1)*batch_size]
+
+            # Perform the forward pass
+            output = self.forward(batch_X, training=False)
+
+            # Calculate the loss
+            self.loss.calculate(output, batch_y)
+                
+            # Get predictions and calculate an accuracy
+            predictions = self.output_layer_activation.predictions(output)
+            accuracy = self.accuracy.calculate(predictions, batch_y)
+
+        # Get and return loss and accuracy
+        validation_loss = self.loss.calculate_accumulated()
+        validation_accuracy = self.accuracy.calculate_accumulated()
+
+        # Print a validation summary
+        print (f'validation, acc: {validation_accuracy:.3f}, loss: {validation_loss:.3f}')
+
     # Add a objects to the model
     def add(self, layer):
         self.layers.append(layer)
@@ -541,12 +586,9 @@ class Model:
 
         # If there is the validation data
         if validation_data is not None:
-            # Set default number of steps for validation as well
-            validation_steps = 1
-
-            # For better readability
-            X_val, y_val = validation_data
-
+            # Evaluate the model
+            self.evaluate(*validation_data, batch_size=batch_size)
+            
         # Calculate number of steps
         if batch_size is not None:
             train_steps = len (X) // batch_size
@@ -693,7 +735,7 @@ class Model:
             # in reversed order passing dinputs as a parameter
             for layer in reversed(self.layers):
                 layer.backward(layer.next.deltaInputs)
-                
+
 
 # Stochastic Gradient Decent (SGD) Optimizer
 class Optimizer_SGD:
@@ -870,6 +912,7 @@ class Optimizer_Adam:
     def post_update_params(self):
         self.iterations += 1
 
+
 # Loads a MNIST dataset
 def load_mnist_dataset (dataset, path):
     
@@ -891,6 +934,7 @@ def load_mnist_dataset (dataset, path):
 
     # Convert the data to proper numpy arrays and return
     return np.array(X), np.array(y).astype('uint8')
+
 
 # MNIST dataset (train + test)
 def create_data_mnist(path):
@@ -926,10 +970,13 @@ model.add(Layer_Dense(128, 10))
 model.add(Softmax_Activation())
 
 # Set loss, optimizer and accuracy objects
-model.set(loss=Categorical_Cross_Entropy_Loss(), optimizer = Optimizer_Adam(decay=1e-4), accuracy=Accuracy_Categorical())
+model.set(loss=Categorical_Cross_Entropy_Loss(), optimizer = Optimizer_Adam(decay=1e-3), accuracy=Accuracy_Categorical())
 
 # Finalize the model
 model.finalize()
 
 # Train the model
 model.train(X, y, validation_data = (X_test, y_test), epochs=10, batch_size=128, print_every=100)
+
+# Evaluate the model
+model.evaluate(X_test, y_test)
