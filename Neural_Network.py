@@ -583,11 +583,6 @@ class Model:
 
         # Default value if batch size is not set
         train_steps = 1
-
-        # If there is the validation data
-        if validation_data is not None:
-            # Evaluate the model
-            self.evaluate(*validation_data, batch_size=batch_size)
             
         # Calculate number of steps
         if batch_size is not None:
@@ -597,13 +592,6 @@ class Model:
             # (We could add an extra step to include it if we wanted to)
             if train_steps * batch_size < len(X):
                 train_steps += 1
-
-            if validation_data is not None :
-                validation_steps = len (X_val) // batch_size
-                # Dividing rounds down. If there are some remaining data but not a full batch, this won't include it. 
-                # (We could add an extra step to include it if we wanted to)
-                if validation_steps * batch_size < len (X_val):
-                    validation_steps += 1
 
         # Main training loop
         for epoch in range (1, epochs+1):
@@ -659,40 +647,8 @@ class Model:
 
             # If there is the validation data
             if validation_data is not None:
-                # Reset accumulated values in loss
-                # and accuracy objects
-                self.loss.new_pass()
-                self.accuracy.new_pass()
-
-                # Iterate over steps
-                for step in range(validation_steps):
-                    # If batch size is not set -
-                    # train using one step and full dataset
-                    if batch_size is None:
-                        batch_X = X_val
-                        batch_y = y_val
-                    
-                    # Otherwise slice a batch
-                    else:
-                        batch_X = X_val[step*batch_size:(step+1)*batch_size]
-                        batch_y = y_val[step*batch_size:(step+1)*batch_size]
-                    
-                    # Perform the forward pass
-                    output = self.forward(batch_X, training=False)
-
-                    # Calculate the loss
-                    self.loss.calculate(output, batch_y)
-
-                    # Get predictions and calculate an accuracy
-                    predictions = self.output_layer_activation.predictions(output)
-                    self.accuracy.calculate(predictions, batch_y)
-
-                # Get and print validation loss and accuracy
-                validation_loss = self.loss.calculate_accumulated()
-                validation_accuracy = self.accuracy.calculate_accumulated()
-
-                # Print a summary
-                print("Validation, acc: {:.3f}, loss: {:.3f}".format(validation_accuracy, validation_loss))
+                # Evaluate the model
+                self.evaluate(*validation_data, batch_size=batch_size)
 
     # Forward pass
     def forward(self, X, training):
