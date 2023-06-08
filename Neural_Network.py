@@ -1,6 +1,8 @@
-import numpy as np
 import os
 import cv2
+import copy
+import pickle
+import numpy as np
 import matplotlib.pyplot as plt
 """
 This program MUST be run in Python 3+, so type in the command line: python3 Neural_Network.py
@@ -85,6 +87,14 @@ class Layer_Dense:
         # Gradients on values
         self.deltaInputs = np.dot(deltaValues, self.weights.T)
 
+    # Retrieve layer parameters
+    def get_parameters(self):
+        return self.weights, self.biases
+
+    # Set weights and biases in a layer instance
+    def set_parameters(self, weights, biases):
+        self.weights = weights
+        self.biases = biases
 
 # Dropout
 class Layer_Dropout:
@@ -152,6 +162,7 @@ class Softmax_Activation:
         probablities = exp_values / np.sum(exp_values, axis=1, keepdims=True)
         # Return the output
         self.output = probablities
+
 
     def backward(self, deltaValues):
         # Create an uninitialized array
@@ -521,9 +532,14 @@ class Model:
 
     # Set loss, optimizer and accuracy
     def set(self, *, loss, optimizer, accuracy):
-        self.loss = loss
-        self.optimizer = optimizer
-        self.accuracy = accuracy
+        if loss is not None:
+            self.loss = loss
+        
+        if optimizer is not None:
+            self.optimizer = optimizer
+        
+        if accuracy is not None:
+            self.accuracy = accuracy
 
     # Finalize the model
     def finalize(self):
@@ -564,7 +580,8 @@ class Model:
                 self.trainable_layers.append(self.layers[i])
         
             # Update loss object with trainable layers
-            self.loss.remember_trainable_layers(self.trainable_layers)
+            if self.loss is not None:
+                self.loss.remember_trainable_layers(self.trainable_layers)
         
         # If output activation is Softmax and
         # loss function is Categorical Cross-Entropy
@@ -691,6 +708,104 @@ class Model:
             # in reversed order passing dinputs as a parameter
             for layer in reversed(self.layers):
                 layer.backward(layer.next.deltaInputs)
+    
+    # Retrieve and returns parameters of trainable layers
+    def get_parameters(self):
+        # Create a list for parameters
+        parameters = []
+
+        # Iterable trainable layers and get their parameters
+        for layer in self.trainable_layers:
+            parameters.append(layer.get_parameters())
+        
+        # Return a list
+        return parameters
+
+    # Updates the model with new parameters
+    def set_parameters(self, parameters):
+        # Iterate over the parameters and layers
+        # and update each layers with each set of the parameters
+        for parameter_set, layer in zip(parameters, self.trainable_layers):
+            layer.set_parameters(*parameter_set)
+
+    # Save the parameters into a file
+    def save_parameters(self, path):
+        # Open a file in the binary-write mode and save parameters to it
+        with open(path, 'wb') as f:
+            pickle.dump(self.get_parameters(), f)
+    
+    # Load the weights and updates a model instance with them
+    def load_parameters(self, path):
+        # Open a file in the binary-read mode, load weights and update trainable layers
+        with open(path, 'rb') as f:
+            self.set_parameters(pickle.load(f))
+    
+    # Save the model
+    def save(self, path):
+        # Make a deep copy of current model instance
+        model = copy.deepcopy(self)
+
+        # Reset accumulated values in loss and accuracy objects
+        model.loss.new_pass()
+        model.accuracy.new_pass()
+
+        # Remove data from the input layer and gradients from the loss object
+        model.input_layer.__dict__.pop('output', None)
+        model.loss.__dict__.pop('deltaInputs', None)
+
+        # For each layer remove inputs, output and dinputs properties
+        for layer in model.layers:
+            for property in ['inputs', 'output', 'deltaInputs', 'deltaWeights', 'deltaBiases']:
+                layer.__dict__.pop(property, None)
+
+        # Open a file in the binary-write mode and save the model
+        with open(path, 'wb') as f:
+            pickle.dump(model, f)
+    
+    # Loads and returns a model
+    @staticmethod
+    def load(path):
+        # Open file in the binary-read mode, load a model
+        with open(path, 'rb') as f:
+            model = pickle.load(f)
+
+        # Return a model
+        return model
+
+    # Predicts on the samples
+    def predict(self, X, *, batch_size=None):
+        # Default value if batch size is not being set
+        prediction_steps = 1
+
+        # Calculate number of steps
+        if batch_size is not None:
+            prediction_steps = len(X) // batch_size
+
+            # If there are some remaining data, add one more step
+            if prediction_steps * batch_size < len(X):
+                prediction_steps += 1
+        
+        # Model output
+        output = []
+
+        # Iterate over steps
+        for step in range(prediction_steps):
+            # If batch size is not set - train using one step and full dataset
+            if batch_size is None:
+                batch_X = X
+
+            # Otherwise, slice a batch
+            else:
+                batch_X = X[step*batch_size:(step+1)*batch_size]
+            
+            # Perform the forward pass
+            batch_output = self.forward(batch_X, training=False)
+
+            # Append batch prediction to the list of predictions
+            output.append(batch_output)
+
+        # Stack and return results
+        return np.vstack(output)
 
 
 # Stochastic Gradient Decent (SGD) Optimizer
@@ -901,38 +1016,103 @@ def create_data_mnist(path):
     # And return all the data
     return X, y, X_test, y_test
 
-# Create dataset (Load the data)
-X, y, X_test, y_test = create_data_mnist('fashion_mnist_images')
+# Label index to label name relation
+fashion_mnist_labels = {
+    0: 'T-shirt/top',
+    1: 'Trouser',
+    2: 'Pullover',
+    3: 'Dress',
+    4: 'Coat', 
+    5: 'Sandal',
+    6: 'Shirt',
+    7: 'Sneaker', 
+    8: 'Bag',
+    9: 'Ankle boot'
+}
 
-# Shuffle the training dataset
-keys = np.array(range(X.shape[0]))
-np.random.shuffle(keys)
-X = X[keys]
-y = y[keys]
+# Read an image
+image_data = cv2.imread('0001.png', cv2.IMREAD_GRAYSCALE)
 
-# Scale and reshape samples
-X = (X.reshape(X.shape[0], -1).astype(np.float32) - 127.5) / 127.5
-X_test = (X_test.reshape(X_test.shape[ 0 ], - 1 ).astype(np.float32) - 127.5) / 127.5
+# Resize to the same size as Fashion MNIST images
+image_data = cv2.resize(image_data, (28, 28))
 
-# Instantiate the model
-model = Model()
+# Invert image colors
+image_data = 255 - image_data
 
-# Add layers
-model.add(Layer_Dense(X.shape[1], 128))
-model.add(ReLU_Activation())
-model.add(Layer_Dense(128, 128))
-model.add(ReLU_Activation())
-model.add(Layer_Dense(128, 10))
-model.add(Softmax_Activation())
+# Reshape and scale pixel data
+image_data = (image_data.reshape(1, -1).astype(np.float32) - 127.5) / 127.5
 
-# Set loss, optimizer and accuracy objects
-model.set(loss=Categorical_Cross_Entropy_Loss(), optimizer = Optimizer_Adam(decay=1e-3), accuracy=Accuracy_Categorical())
+# Load the model
+model = Model.load('fashion_mnist.model')
 
-# Finalize the model
-model.finalize()
+# Predict on the image
+confidences = model.predict(image_data)
 
-# Train the model
-model.train(X, y, validation_data = (X_test, y_test), epochs=10, batch_size=128, print_every=100)
+# Get prediction instead of confidence levels
+predictions = model.output_layer_activation.predictions(confidences)
 
-# Evaluate the model
-model.evaluate(X_test, y_test)
+# Get label name from label index
+prediction = fashion_mnist_labels[predictions[0]]
+
+print(prediction)
+
+# # Create dataset (Load the data)
+# X, y, X_test, y_test = create_data_mnist('fashion_mnist_images')
+
+# # Shuffle the training dataset
+# keys = np.array(range(X.shape[0]))
+# np.random.shuffle(keys)
+# X = X[keys]
+# y = y[keys]
+
+# # Scale and reshape samples
+# X = (X.reshape(X.shape[0], -1).astype(np.float32) - 127.5) / 127.5
+# X_test = (X_test.reshape(X_test.shape[ 0 ], - 1 ).astype(np.float32) - 127.5) / 127.5
+
+# # Instantiate the model
+# model = Model()
+
+# # Add layers
+# model.add(Layer_Dense(X.shape[1], 128))
+# model.add(ReLU_Activation())
+# model.add(Layer_Dense(128, 128))
+# model.add(ReLU_Activation())
+# model.add(Layer_Dense(128, 10))
+# model.add(Softmax_Activation())
+
+# # Set loss, optimizer and accuracy objects
+# model.set(loss=Categorical_Cross_Entropy_Loss(), optimizer=Optimizer_Adam(decay=1e-4), accuracy=Accuracy_Categorical())
+
+# # Finalize the model
+# model.finalize()
+
+# # Train the model
+# model.train(X, y, validation_data=(X_test, y_test), epochs=10, batch_size=128, print_every=100)
+
+# # Retrieve model parameters
+# parameters = model.get_parameters
+
+# # NEW MODEL
+
+# # Instantiate the model
+# model = Model()
+
+# # Add layers
+# model.add(Layer_Dense(X.shape[1], 128))
+# model.add(ReLU_Activation())
+# model.add(Layer_Dense(128, 128))
+# model.add(ReLU_Activation())
+# model.add(Layer_Dense(128, 10))
+# model.add(Softmax_Activation())
+
+# # Set loss and accuracy objects (We do not set optimizer object this time - there's no need to do it as we won't train the model)
+# model.set(loss=Categorical_Cross_Entropy_Loss(), accuracy=Accuracy_Categorical())
+
+# # Finalize the model
+# model.finalize()
+
+# # Set model with parameters instead of training it
+# model.load_parameters('fashion_mnist.parms')
+
+# # Evaluate the model
+# model.evaluate(X_test, y_test)
