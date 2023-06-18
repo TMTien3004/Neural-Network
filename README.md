@@ -14,8 +14,8 @@ In addition, I only use some of the functions in the main program in order to op
 ## Features
 - Generating Layers: The program enables to compute weights and biases of each neuron, manually inputting number of neurons per layers, and generate outputs.
 - Backpropagation algorithm: Backpropagation is implemented to calculate gradients, update weights and biases, and modify the network's performance during the training process.
-- Activation functions: The program supports a range of activation functions, including Sigmoid, ReLU, and Softmax, allowing users to experiment with different non-linearities.
-- Gradient descent optimization: The library incorporates gradient descent optimization algorithms, such as Stochastic Gradient Descent (SGD), to efficiently minimize the network's loss function.
+- Activation functions: The program supports a range of activation functions, including Sigmoid, (Rectified Linear Activation) ReLU, and Softmax, allowing users to experiment with different non-linearities.
+- Gradient descent optimization: The library incorporates gradient descent optimization algorithms, such as Stochastic Gradient Descent (SGD), Adaptive Gradient (Adagrad), Root Mean Square Propagation (RMSProp), and Adaptive Momentum (Adam) to efficiently minimize the network's loss function.
 
 
 ## Pre-requisite
