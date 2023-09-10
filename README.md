@@ -17,6 +17,10 @@ In addition, I only use some of the functions in the main program in order to op
 - Activation functions: The program supports a range of activation functions, including Sigmoid, (Rectified Linear Activation) ReLU, and Softmax, allowing users to experiment with different non-linearities.
 - Gradient descent optimization: The library incorporates gradient descent optimization algorithms, such as Stochastic Gradient Descent (SGD), Adaptive Gradient (Adagrad), Root Mean Square Propagation (RMSProp), and Adaptive Momentum (Adam) to efficiently minimize the network's loss function.
 
+## Illustration
+Below is an illustration of running the neural network with categorical cross-entropy loss, Adam optimizer, and categorical accuracy.
+
+![](illustration.gif)
 
 ## Pre-requisite
 In order to get a better understanding of the project, you need to have prior knowledge in the following subjects:
